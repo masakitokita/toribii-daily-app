@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import json
 
 st.set_page_config(
     page_title="炭火バル とりびぃーの 日報・小口管理",
@@ -37,8 +38,11 @@ if view_mode == "スマホ版プレビューで確認":
 st.markdown("<h1 style='font-size: 24px; white-space: nowrap; margin-bottom: 0px;'>炭火バル とりびぃーの</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #666; font-size: 13px; margin-top: 2px;'>店舗スタッフ用日報・仕入管理システム</p>", unsafe_allow_html=True)
 
+# 初期データ（CSVから読み込んだ2026年8月〜11月の税込売上実績）
+initial_reports = json.loads('''{"data": ''' + json.dumps(records, ensure_ascii=False) + '''}''')['data']
+
 if "reports" not in st.session_state:
-    st.session_state.reports = []
+    st.session_state.reports = initial_reports
 if "small_cash_locked" not in st.session_state:
     st.session_state.small_cash_locked = False
 if "current_claim" not in st.session_state:
@@ -49,24 +53,19 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 ダッシュボード", "📝 日報送�
 monthly_target = 4000000
 
 with tab1:
-    st.subheader("月間売上ダッシュボード")
+    st.subheader("月間売上ダッシュボード（税込）")
     
-    # ── 表示月の選択 ──
-    # 蓄積されたデータから存在する月を自動抽出。なければ今月。
-    default_month = datetime.today().strftime("%Y-%m")
-    if st.session_state.reports:
-        available_months = sorted(list(set([r["日時"][:7] for r in st.session_state.reports])), reverse=True)
-        if default_month not in available_months:
-            available_months.insert(0, default_month)
-    else:
-        available_months = [default_month]
+    # 表示月の選択（デフォルトを11月に）
+    default_month = "2026-11"
+    available_months = sorted(list(set([r["日時"][:7] for r in st.session_state.reports])), reverse=True)
+    if default_month not in available_months:
+        available_months.insert(0, default_month)
         
     selected_month = st.selectbox("📅 表示月を選択", available_months)
     
     # 選択された月のデータを抽出
     filtered_reports = [r for r in st.session_state.reports if r["日時"].startswith(selected_month)]
     
-    # 売上合計などの計算
     total_sales = sum([r["Uレジ売上"] for r in filtered_reports])
     total_customers = sum([r["客数"] for r in filtered_reports])
     
@@ -76,26 +75,25 @@ with tab1:
     
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        st.metric("当月累計客数", f"{total_customers}人")
+        st.metric("当月累計客数", f"{total_customers:,}人")
     with col_c2:
         avg_p = int(total_sales / total_customers) if total_customers > 0 else 0
         st.metric("平均客単価", f"¥{avg_p:,}")
     
     st.markdown("---")
-    st.subheader(f"📈 {selected_month} 日別売上推移")
+    st.subheader(f"📈 {selected_month} 日別売上推移（税込）")
     
     if filtered_reports:
-        # データを日付順にソートしてグラフ・テーブル表示
         df_filtered = pd.DataFrame(filtered_reports).sort_values("日時")
         chart_data = df_filtered.set_index("日時")[["Uレジ売上"]]
-        chart_data.columns = ["売上（円）"]
+        chart_data.columns = ["売上（税込・円）"]
         
         st.line_chart(chart_data)
         
         with st.expander("📋 日別詳細データ一覧を見る"):
             st.dataframe(df_filtered, use_container_width=True)
     else:
-        st.info(f"{selected_month} に蓄積された日報データはありません。「日報送信」タブからデータを蓄積してください。")
+        st.info(f"{selected_month} に蓄積された日報データはありません。")
 
 with tab2:
     st.subheader("日報・売上・原価入力")
@@ -113,7 +111,7 @@ with tab2:
     if u_regi_img is not None or receipt_img is not None:
         st.success("✨ 写メからの自動読み取りが完了しました。")
 
-    sales_amount = st.number_input("Uレジ 売上金額（円）", min_value=0, step=1000, value=auto_sales, format="%d")
+    sales_amount = st.number_input("Uレジ 売上金額（税込・円）", min_value=0, step=1000, value=auto_sales, format="%d")
     
     col_g, col_c = st.columns(2)
     with col_g:
@@ -124,7 +122,7 @@ with tab2:
     avg_spending = (sales_amount / customer_count) if customer_count > 0 else 0
     st.caption(f"本日の客単価: **¥{int(avg_spending):,}**")
     
-    # ── 人件費詳細入力（正社員1人、パートAは5時間、パートB〜Dは0時間スタート） ──
+    # 人件費詳細入力（正社員1人、パートAは5時間、パートB〜Dは0時間スタート）
     st.subheader("人件費詳細入力")
     staff_shain = st.number_input("正社員人数（日給¥20,000）", min_value=0, step=1, value=1)
     
@@ -133,13 +131,11 @@ with tab2:
     b_c_hours = st.number_input("パートC（時給¥1,300）時間数", min_value=0.0, step=0.5, value=0.0)
     b_d_hours = st.number_input("パートD（時給¥1,300）時間数", min_value=0.0, step=0.5, value=0.0)
     
-    # 計算ロジック
     shain_cost = staff_shain * 20000
     part_time_cost = int((b_a_hours + b_b_hours + b_c_hours + b_d_hours) * 1300)
     total_labor_cost = shain_cost + part_time_cost
     
     st.markdown(f"**本日合計人件費:** **¥{total_labor_cost:,}**")
-    # ──────────────────────────────
     
     st.markdown("")
     if st.button("日報データを蓄積する", use_container_width=True):
@@ -158,7 +154,7 @@ with tab3:
     sc_receipt = st.file_uploader("【小口精算用】レシート写メ", type=["jpg", "jpeg", "png"], key="sc_receipt")
     auto_calculated_amount = 4580 if sc_receipt is not None else 0
     st.info(f"自動読み取りされた精算申請額: ¥{auto_calculated_amount:,}")
-    if st.button("小口精算を申請する", use_container_width=True):
+    if st.button("小口精算を申請する"):
         if sc_receipt is None:
             st.error("小口精算用のレシート写メをアップロードしてください。")
         else:
