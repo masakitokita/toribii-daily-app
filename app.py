@@ -4,11 +4,11 @@ from datetime import datetime
 
 st.set_page_config(
     page_title="炭火バル とりびぃーの 日報・小口管理",
-    layout="wide", # PCでも広く使えるようwideに設定
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# スマホ版プレビュー用のコンテナを再現するCSS
+# スマホ版プレビューおよび数値入力の＋−ボタンを完全に非表示にするCSS
 st.markdown(
     """
     <style>
@@ -17,6 +17,9 @@ st.markdown(
     }
     div[data-baseweb="spinbutton"] input {
         text-align: left;
+    }
+    button[kind="step-up"], button[kind="step-down"] {
+        display: none !important;
     }
     </style>
     """,
@@ -28,9 +31,6 @@ st.sidebar.header("🖥️ 表示モード切替")
 view_mode = st.sidebar.radio("表示方法を選んでください", ["スマホ版プレビューで確認", "通常PCワイド表示"])
 
 if view_mode == "スマホ版プレビューで確認":
-    # スマホの幅（約420px）に制限して中央寄せにするフレーム枠
-    _, center_col, _ = st.sidebar.columns([1, 2, 1]) # ダミー用、メイン側で囲みを作る
-    # 実質的なスマホ風レイアウトをレンダリングするため、中央にカラムを配置
     st.markdown("<div style='max-width: 480px; margin: auto; padding: 15px; border: 2px solid #ccc; border-radius: 20px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);'>", unsafe_allow_html=True)
 
 # ヘッダー
@@ -47,27 +47,55 @@ if "current_claim" not in st.session_state:
 tab1, tab2, tab3, tab4 = st.tabs(["📊 ダッシュボード", "📝 日報送信", "💰 小口精算", "⚙️ 管理者"])
 
 monthly_target = 4000000
-current_sales = 3140670
 
 with tab1:
     st.subheader("月間売上ダッシュボード")
-    progress = min(current_sales / monthly_target, 1.0)
-    st.metric(label="11月目標達成率", value=f"{progress*100:.1f}%", delta=f"¥{current_sales:,} / ¥{monthly_target:,}")
-    st.progress(progress)
     
-    st.markdown("---")
-    st.subheader("日次売上推移（11月）")
-    chart_data = pd.DataFrame({
-        "日": [f"{i}日" for i in range(1, 15)],
-        "売上": [120000, 140000, 135000, 150000, 125000, 160000, 180000, 110000, 130000, 145000, 155000, 140000, 142000, 140670]
-    }).set_index("日")
-    st.line_chart(chart_data)
+    # ── 表示月の選択 ──
+    # 蓄積されたデータから存在する月を自動抽出。なければ今月。
+    default_month = datetime.today().strftime("%Y-%m")
+    if st.session_state.reports:
+        available_months = sorted(list(set([r["日時"][:7] for r in st.session_state.reports])), reverse=True)
+        if default_month not in available_months:
+            available_months.insert(0, default_month)
+    else:
+        available_months = [default_month]
+        
+    selected_month = st.selectbox("📅 表示月を選択", available_months)
+    
+    # 選択された月のデータを抽出
+    filtered_reports = [r for r in st.session_state.reports if r["日時"].startswith(selected_month)]
+    
+    # 売上合計などの計算
+    total_sales = sum([r["Uレジ売上"] for r in filtered_reports])
+    total_customers = sum([r["客数"] for r in filtered_reports])
+    
+    progress = min(total_sales / monthly_target, 1.0)
+    st.metric(label=f"{selected_month} 売上達成率", value=f"{progress*100:.1f}%", delta=f"¥{total_sales:,} / ¥{monthly_target:,}")
+    st.progress(progress)
     
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        st.metric("当月累計客数", "628人")
+        st.metric("当月累計客数", f"{total_customers}人")
     with col_c2:
-        st.metric("平均客単価", "¥5,001")
+        avg_p = int(total_sales / total_customers) if total_customers > 0 else 0
+        st.metric("平均客単価", f"¥{avg_p:,}")
+    
+    st.markdown("---")
+    st.subheader(f"📈 {selected_month} 日別売上推移")
+    
+    if filtered_reports:
+        # データを日付順にソートしてグラフ・テーブル表示
+        df_filtered = pd.DataFrame(filtered_reports).sort_values("日時")
+        chart_data = df_filtered.set_index("日時")[["Uレジ売上"]]
+        chart_data.columns = ["売上（円）"]
+        
+        st.line_chart(chart_data)
+        
+        with st.expander("📋 日別詳細データ一覧を見る"):
+            st.dataframe(df_filtered, use_container_width=True)
+    else:
+        st.info(f"{selected_month} に蓄積された日報データはありません。「日報送信」タブからデータを蓄積してください。")
 
 with tab2:
     st.subheader("日報・売上・原価入力")
@@ -96,14 +124,14 @@ with tab2:
     avg_spending = (sales_amount / customer_count) if customer_count > 0 else 0
     st.caption(f"本日の客単価: **¥{int(avg_spending):,}**")
     
-    # ── 人件費詳細入力（デフォルト値を設定） ──
+    # ── 人件費詳細入力（正社員1人、パートAは5時間、パートB〜Dは0時間スタート） ──
     st.subheader("人件費詳細入力")
     staff_shain = st.number_input("正社員人数（日給¥20,000）", min_value=0, step=1, value=1)
     
     b_a_hours = st.number_input("パートA（時給¥1,300）時間数", min_value=0.0, step=0.5, value=5.0)
-    b_b_hours = st.number_input("パートB（時給¥1,300）時間数", min_value=0.0, step=0.5, value=5.0)
-    b_c_hours = st.number_input("パートC（時給¥1,300）時間数", min_value=0.0, step=0.5, value=5.0)
-    b_d_hours = st.number_input("パートD（時給¥1,300）時間数", min_value=0.0, step=0.5, value=5.0)
+    b_b_hours = st.number_input("パートB（時給¥1,300）時間数", min_value=0.0, step=0.5, value=0.0)
+    b_c_hours = st.number_input("パートC（時給¥1,300）時間数", min_value=0.0, step=0.5, value=0.0)
+    b_d_hours = st.number_input("パートD（時給¥1,300）時間数", min_value=0.0, step=0.5, value=0.0)
     
     # 計算ロジック
     shain_cost = staff_shain * 20000
