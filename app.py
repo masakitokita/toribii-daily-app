@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-# ページ設定
+# --- ページ設定 ---
 st.set_page_config(
     page_title="炭火バル とりびぃーの 日報・管理システム",
     page_icon="🏮",
@@ -15,178 +15,146 @@ DATA_FILE = "toribii_daily_data.csv"
 
 
 # --- 初期データの読み込み・作成 ---
-@st.cache_data
 def load_data():
   if os.path.exists(DATA_FILE):
-    df = pd.read_csv(DATA_FILE)
-    df["日時"] = pd.to_datetime(df["日時"])
-    return df
-  else:
-    # 初期データ（8月〜11月途中までのサンプルおよび基本データ構造）
-    initial_data = [
-        # 8月サンプル
-        {
-            "日時": "2026-08-01",
-            "Uレジ売上": 101068,
-            "組数": 6,
-            "客数": 16,
-            "人件費": 35600,
-            "瀬島": 9500,
-            "川島食品": 0,
-        },
-        {
-            "日時": "2026-08-02",
-            "Uレジ売上": 81587,
-            "組数": 6,
-            "客数": 17,
-            "人件費": 35600,
-            "瀬島": 0,
-            "川島食品": 5400,
-        },
-        {
-            "日時": "2026-08-03",
-            "Uレジ売上": 0,
-            "組数": 0,
-            "客数": 0,
-            "人件費": 0,
-            "瀬島": 0,
-            "川島食品": 0,
-        },
-        # 11月途中サンプル（11/1〜11/14）
-        {
-            "日時": "2026-11-01",
-            "Uレジ売上": 0,
-            "組数": 0,
-            "客数": 0,
-            "人件費": 0,
-            "瀬島": 0,
-            "川島食品": 0,
-        },
-        {
-            "日時": "2026-11-02",
-            "Uレジ売上": 116930,
-            "組数": 8,
-            "客数": 22,
-            "人件費": 35600,
-            "瀬島": 8500,
-            "川島食品": 4200,
-        },
-        {
-            "日時": "2026-11-03",
-            "Uレジ売上": 67947,
-            "組数": 5,
-            "客数": 12,
-            "人件費": 32000,
-            "瀬島": 4000,
-            "川島食品": 3100,
-        },
-        {
-            "日時": "2026-11-04",
-            "Uレジ売上": 87153,
-            "組数": 4,
-            "客数": 11,
-            "人件費": 32000,
-            "瀬島": 6200,
-            "川島食品": 2800,
-        },
-        {
-            "日時": "2026-11-05",
-            "Uレジ売上": 95400,
-            "組数": 7,
-            "客数": 19,
-            "人件費": 35600,
-            "瀬島": 7100,
-            "川島食品": 3500,
-        },
-        {
-            "日時": "2026-11-06",
-            "Uレジ売上": 142000,
-            "組数": 11,
-            "客数": 30,
-            "人件費": 40000,
-            "瀬島": 12000,
-            "川島食品": 6000,
-        },
-        {
-            "日時": "2026-11-07",
-            "Uレジ売上": 155000,
-            "組数": 12,
-            "客数": 33,
-            "人件費": 42000,
-            "瀬島": 15000,
-            "川島食品": 7500,
-        },
-        {
-            "日時": "2026-11-08",
-            "Uレジ売上": 0,
-            "組数": 0,
-            "客数": 0,
-            "人件費": 0,
-            "瀬島": 0,
-            "川島食品": 0,
-        },
-        {
-            "日時": "2026-11-09",
-            "Uレジ売上": 0,
-            "組数": 0,
-            "客数": 0,
-            "人件費": 0,
-            "瀬島": 0,
-            "川島食品": 0,
-        },
-        {
-            "日時": "2026-11-10",
-            "Uレジ売上": 98000,
-            "組数": 7,
-            "客数": 18,
-            "人件費": 33000,
-            "瀬島": 5000,
-            "川島食品": 2500,
-        },
-        {
-            "日時": "2026-11-11",
-            "Uレジ売上": 89000,
-            "組数": 6,
-            "客数": 16,
-            "人件費": 33000,
-            "瀬島": 4800,
-            "川島食品": 2200,
-        },
-        {
-            "日時": "2026-11-12",
-            "Uレジ売上": 105000,
-            "組数": 8,
-            "客数": 21,
-            "人件費": 35600,
-            "瀬島": 6500,
-            "川島食品": 3000,
-        },
-        {
-            "日時": "2026-11-13",
-            "Uレジ売上": 152392,
-            "組数": 12,
-            "客数": 34,
-            "人件費": 42000,
-            "瀬島": 14000,
-            "川島食品": 6800,
-        },
-        {
-            "日時": "2026-11-14",
-            "Uレジ売上": 140670,
-            "組数": 10,
-            "客数": 28,
-            "人件費": 35600,
-            "瀬島": 9716,
-            "川島食品": 0,
-        },
-    ]
-    df = pd.DataFrame(initial_data)
-    df["日時"] = pd.to_datetime(df["日時"])
-    df.to_csv(DATA_FILE, index=False)
-    return df
+    try:
+      df = pd.read_csv(DATA_FILE)
+      df["日時"] = pd.to_datetime(df["日時"])
+      return df
+    except Exception:
+      pass
+
+  # ファイルがない場合、または読み込みエラー時の初期データ
+  initial_data = [
+      {
+          "日時": "2026-08-01",
+          "Uレジ売上": 101068,
+          "組数": 6,
+          "客数": 16,
+          "人件費": 35600,
+          "瀬島": 9500,
+          "川島食品": 0,
+      },
+      {
+          "日時": "2026-08-02",
+          "Uレジ売上": 81587,
+          "組数": 6,
+          "客数": 17,
+          "人件費": 35600,
+          "瀬島": 0,
+          "川島食品": 5400,
+      },
+      {
+          "日時": "2026-11-02",
+          "Uレジ売上": 116930,
+          "組数": 8,
+          "客数": 22,
+          "人件費": 35600,
+          "瀬島": 8500,
+          "川島食品": 4200,
+      },
+      {
+          "日時": "2026-11-03",
+          "Uレジ売上": 67947,
+          "組数": 5,
+          "客数": 12,
+          "人件費": 32000,
+          "瀬島": 4000,
+          "川島食品": 3100,
+      },
+      {
+          "日時": "2026-11-04",
+          "Uレジ売上": 87153,
+          "組数": 4,
+          "客数": 11,
+          "人件費": 32000,
+          "瀬島": 6200,
+          "川島食品": 2800,
+      },
+      {
+          "日時": "2026-11-05",
+          "Uレジ売上": 95400,
+          "組数": 7,
+          "客数": 19,
+          "人件費": 35600,
+          "瀬島": 7100,
+          "川島食品": 3500,
+      },
+      {
+          "日時": "2026-11-06",
+          "Uレジ売上": 142000,
+          "組数": 11,
+          "客数": 30,
+          "人件費": 40000,
+          "瀬島": 12000,
+          "川島食品": 6000,
+      },
+      {
+          "日時": "2026-11-07",
+          "Uレジ売上": 155000,
+          "組数": 12,
+          "客数": 33,
+          "人件費": 42000,
+          "瀬島": 15000,
+          "川島食品": 7500,
+      },
+      {
+          "日時": "2026-11-10",
+          "Uレジ売上": 98000,
+          "組数": 7,
+          "客数": 18,
+          "人件費": 33000,
+          "瀬島": 5000,
+          "川島食品": 2500,
+      },
+      {
+          "日時": "2026-11-11",
+          "Uレジ売上": 89000,
+          "組数": 6,
+          "客数": 16,
+          "人件費": 33000,
+          "瀬島": 4800,
+          "川島食品": 2200,
+      },
+      {
+          "日時": "2026-11-12",
+          "Uレジ売上": 105000,
+          "組数": 8,
+          "客数": 21,
+          "人件費": 35600,
+          "瀬島": 6500,
+          "川島食品": 3000,
+      },
+      {
+          "日時": "2026-11-13",
+          "Uレジ売上": 152392,
+          "組数": 12,
+          "客数": 34,
+          "人件費": 42000,
+          "瀬島": 14000,
+          "川島食品": 6800,
+      },
+      {
+          "日時": "2026-11-14",
+          "Uレジ売上": 140670,
+          "組数": 10,
+          "客数": 28,
+          "人件費": 35600,
+          "瀬島": 9716,
+          "川島食品": 0,
+      },
+  ]
+  df = pd.DataFrame(initial_data)
+  df["日時"] = pd.to_datetime(df["日時"])
+  df.to_csv(DATA_FILE, index=False)
+  return df
 
 
-df_data = load_data()
+# セッションステートでデータを保持
+if "df_data" not in st.session_state:
+  st.session_state.df_data = load_data()
+
+df_data = st.session_state.df_data
 
 # --- 共通ヘッダー ---
 st.title("炭火バル とりびぃーの")
@@ -242,11 +210,13 @@ with tab_input:
     submitted = st.form_submit_button("日報を送信・保存する")
     if submitted:
       date_str = input_date.strftime("%Y-%m-%d")
+      date_dt = pd.to_datetime(date_str)
+
       # 既存データの更新または追加
-      global df_data
-      if date_str in df_data["日時"].dt.strftime("%Y-%m-%d").values:
+      mask = df_data["日時"].dt.strftime("%Y-%m-%d") == date_str
+      if mask.any():
         df_data.loc[
-            df_data["日時"].dt.strftime("%Y-%m-%d") == date_str,
+            mask,
             [
                 "Uレジ売上",
                 "組数",
@@ -258,7 +228,7 @@ with tab_input:
         ] = [sales, groups, customers, labor_cost, cost_sejima, cost_kawashima]
       else:
         new_row = pd.DataFrame({
-            "日時": [pd.to_datetime(date_str)],
+            "日時": [date_dt],
             "Uレジ売上": [sales],
             "組数": [groups],
             "客数": [customers],
@@ -269,9 +239,8 @@ with tab_input:
         df_data = pd.concat([df_data, new_row], ignore_index=True)
 
       df_data.to_csv(DATA_FILE, index=False)
-      st.success(
-          f"✨ {date_str} の日報データを正常に保存しました！"
-      )
+      st.session_state.df_data = df_data
+      st.success(f"✨ {date_str} の日報データを正常に保存しました！")
 
 # ==========================================
 # 2. 経営ダッシュボードタブ（選択制）
@@ -279,10 +248,7 @@ with tab_input:
 with tab_dashboard:
   st.subheader("📊 経営ダッシュボード")
 
-  # --- サイドバーまたは上部での選択コントロール ---
-  st.markdown(
-      "### 🎛️ 表示モジュール選択（見たい項目にチェックを入れてください）"
-  )
+  st.markdown("### 🎛️ 表示モジュール選択（見たい項目にチェック）")
   selected_modules = st.multiselect(
       "表示項目",
       [
@@ -303,7 +269,9 @@ with tab_dashboard:
   # 月の選択フィルター
   df_data["年月"] = df_data["日時"].dt.strftime("%Y年%m月")
   available_months = sorted(df_data["年月"].unique(), reverse=True)
-  selected_month = st.selectbox("対象月を選択", available_months)
+  selected_month = st.selectbox(
+      "対象月を選択", available_months, key="dash_month"
+  )
 
   # フィルタリング
   df_filtered = df_data[df_data["年月"] == selected_month].copy()
@@ -331,7 +299,7 @@ with tab_dashboard:
     col2.metric(
         "営業日数", f"{active_days_count} 日", "基準: 24日（月商300万目標）"
     )
-    col3.metric("月間総客数", f"{:,}".format(int(total_customers)) + " 人")
+    col3.metric("月間総客数", f"{total_customers:,} 人")
     col4.metric(
         "平均客単価",
         f"¥{avg_spend:,}",
@@ -347,8 +315,9 @@ with tab_dashboard:
         "💡 月商300万（24営業日・平均日販12.5万円）をベースに、週末や平日の波に合わせた曜日別目標モデルです。"
     )
 
-    active_df["曜日JP"] = (
-        active_df["日時"]
+    active_df_copy = active_df.copy()
+    active_df_copy["曜日JP"] = (
+        active_df_copy["日時"]
         .dt.day_name()
         .map({
             "Monday": "月",
@@ -362,13 +331,12 @@ with tab_dashboard:
     )
 
     dow_summary = (
-        active_df.groupby("曜日JP")
+        active_df_copy.groupby("曜日JP")
         .agg(営業回数=("Uレジ売上", "count"), 平均売上=("Uレジ売上", "mean"))
         .reindex(["月", "火", "水", "木", "金", "土", "日"])
         .fillna(0)
     )
 
-    # 曜日別目標の定義（24日モデル）
     target_dow_dict = {
         "金": 160000,
         "土": 145000,
@@ -381,20 +349,22 @@ with tab_dashboard:
     dow_summary["目標日販"] = pd.Series(target_dow_dict)
     dow_summary["平均実績"] = dow_summary["平均売上"].astype(int)
 
-    st.dataframe(
-        dow_summary[["営業回数", "目標日販", "平均実績"]].style.format({
-            "目標日販": "¥{:,.0f}",
-            "平均実績": "¥{:,.0f}",
-        }),
-        use_container_width=True,
-    )
+    # 表示用テーブル作成（フォーマット済み文字列）
+    display_dow = pd.DataFrame({
+        "営業回数": dow_summary["営業回数"].astype(int).astype(str) + "回",
+        "目標日販": dow_summary["目標日販"].apply(lambda x: f"¥{x:,.0f}"),
+        "平均実績": dow_summary["平均実績"].apply(lambda x: f"¥{x:,.0f}"),
+    })
+
+    st.dataframe(display_dow, use_container_width=True)
     st.markdown("---")
 
   # 3. 日別売上推移グラフ ＆ 詳細テーブル
   if "3. 日別売上推移グラフ ＆ 詳細テーブル" in selected_modules:
     st.markdown(f"### 📈 {selected_month} 日別売上推移")
-    chart_df = df_filtered.set_index("日時")[["Uレジ売上"]]
-    st.line_chart(chart_df)
+    if not df_filtered.empty:
+      chart_df = df_filtered.set_index("日時")[["Uレジ売上"]]
+      st.line_chart(chart_df)
 
     with st.expander("📋 日別詳細データ一覧を表示する"):
       display_df = df_filtered.copy()
@@ -429,7 +399,6 @@ with tab_dashboard:
     total_labor = active_df["人件費"].sum()
     total_sejima = active_df["瀬島"].sum()
     total_kawashima = active_df["川島食品"].sum()
-    total_cost = total_sejima + total_kawashima
 
     col_c1, col_c2, col_c3 = st.columns(3)
     col_c1.metric(
