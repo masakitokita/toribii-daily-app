@@ -14,20 +14,12 @@ st.set_page_config(
 DATA_FILE = "toribii_daily_data.csv"
 
 
-# --- 過去の全売上データを含む初期データの読み込み・作成 ---
-def load_data():
-  if os.path.exists(DATA_FILE):
-    try:
-      df = pd.read_csv(DATA_FILE)
-      df["日時"] = pd.to_datetime(df["日時"])
-      return df
-    except Exception:
-      pass
-
-  # 8月〜11月の完全版サンプルデータ（過去データを確実に反映）
+# --- 過去データを含む初期データの生成・読み込み ---
+def load_and_initialize_data():
+  # 常に最新の完全版データを強制生成して確実に反映させる形に修正
   initial_data = []
 
-  # 8月データ
+  # 8月データ（24営業日ベース、日曜休業）
   for day in range(1, 32):
     try:
       dt = datetime.date(2026, 8, day)
@@ -106,16 +98,35 @@ def load_data():
         "川島食品": kaw,
     })
 
-  df = pd.DataFrame(initial_data)
-  df.to_csv(DATA_FILE, index=False)
-  return df
+  df_generated = pd.DataFrame(initial_data)
+
+  # すでにCSVファイルがある場合は、ユーザーが追加した日報データと統合する
+  if os.path.exists(DATA_FILE):
+    try:
+      df_csv = pd.read_csv(DATA_FILE)
+      df_csv["日時"] = pd.to_datetime(df_csv["日時"])
+      # 日付をキーにして結合（CSV側のデータが優先）
+      df_combined = pd.concat([df_generated, df_csv]).drop_duplicates(
+          subset=["日時"], keep="last"
+      )
+      df_combined = df_combined.sort_values("日時").reset_index(drop=True)
+      return df_combined
+    except Exception:
+      pass
+
+  df_generated.to_csv(DATA_FILE, index=False)
+  return df_generated
 
 
-# セッションステートで確実に保持
+# セッションステートで保持
 if "df_data" not in st.session_state:
-  st.session_state.df_data = load_data()
+  st.session_state.df_data = load_and_initialize_data()
 
 df_data = st.session_state.df_data
+
+# 日時型へ確実に変換し、「年月」列を作成
+df_data["日時"] = pd.to_datetime(df_data["日時"])
+df_data["年月"] = df_data["日時"].dt.strftime("%Y年%m月")
 
 # --- 共通ヘッダー ---
 st.title("炭火バル とりびぃーの")
@@ -195,6 +206,7 @@ with tab_input:
             "人件費": [labor_cost],
             "瀬島": [cost_sejima],
             "川島食品": [cost_kawashima],
+            "年月": [date_dt.strftime("%Y年%m月")],
         })
         df_data = pd.concat([df_data, new_row], ignore_index=True)
 
@@ -208,7 +220,7 @@ with tab_input:
 with tab_dashboard:
   st.subheader("📊 経営ダッシュボード【仮案1】")
   st.info(
-      "💡 過去の売上データ（8月・9月・10月・11月）が完全に反映されています。"
+      "💡 過去の売上データ（8月・9月・10月・11月）が反映されています。対象月から確認したい月をお選びください。"
   )
 
   selected_modules = st.multiselect(
@@ -229,13 +241,13 @@ with tab_dashboard:
 
   st.markdown("---")
 
-  # 年月列を確実に作成して選択肢に反映
-  df_data["年月"] = df_data["日時"].dt.strftime("%Y年%m月")
+  # 対象月のセレクトボックス（確実に年月リストを取得）
   available_months = sorted(df_data["年月"].unique(), reverse=True)
   selected_month = st.selectbox(
       "対象月を選択", available_months, key="dash_month_select"
   )
 
+  # 選択された月に応じてデータをフィルタリング
   df_filtered = df_data[df_data["年月"] == selected_month].copy()
   active_df = df_filtered[df_filtered["Uレジ売上"] > 0].copy()
 
