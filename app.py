@@ -24,7 +24,7 @@ def load_data():
     except Exception:
       pass
 
-  # ファイルがない場合、または読み込みエラー時の初期データ
+  # 初期サンプルデータ（11月途中経過含む）
   initial_data = [
       {
           "日時": "2026-08-01",
@@ -43,6 +43,15 @@ def load_data():
           "人件費": 35600,
           "瀬島": 0,
           "川島食品": 5400,
+      },
+      {
+          "日時": "2026-11-01",
+          "Uレジ売上": 0,
+          "組数": 0,
+          "客数": 0,
+          "人件費": 0,
+          "瀬島": 0,
+          "川島食品": 0,
       },
       {
           "日時": "2026-11-02",
@@ -99,6 +108,24 @@ def load_data():
           "川島食品": 7500,
       },
       {
+          "日時": "2026-11-08",
+          "Uレジ売上": 0,
+          "組数": 0,
+          "客数": 0,
+          "人件費": 0,
+          "瀬島": 0,
+          "川島食品": 0,
+      },
+      {
+          "日時": "2026-11-09",
+          "Uレジ売上": 0,
+          "組数": 0,
+          "客数": 0,
+          "人件費": 0,
+          "瀬島": 0,
+          "川島食品": 0,
+      },
+      {
           "日時": "2026-11-10",
           "Uレジ売上": 98000,
           "組数": 7,
@@ -150,7 +177,7 @@ def load_data():
   return df
 
 
-# セッションステートでデータを保持
+# セッションステートで保持
 if "df_data" not in st.session_state:
   st.session_state.df_data = load_data()
 
@@ -162,7 +189,7 @@ st.markdown("店舗スタッフ用日報・仕入管理・経営ダッシュボ�
 
 # タブの構成
 tab_input, tab_dashboard, tab_admin = st.tabs(
-    ["日報・仕入送信", "📊 経営ダッシュボード（選択制）", "管理者画面"]
+    ["日報・仕入送信", "📊 経営ダッシュボード（仮案1）", "管理者画面"]
 )
 
 # ==========================================
@@ -212,7 +239,6 @@ with tab_input:
       date_str = input_date.strftime("%Y-%m-%d")
       date_dt = pd.to_datetime(date_str)
 
-      # 既存データの更新または追加
       mask = df_data["日時"].dt.strftime("%Y-%m-%d") == date_str
       if mask.any():
         df_data.loc[
@@ -243,39 +269,40 @@ with tab_input:
       st.success(f"✨ {date_str} の日報データを正常に保存しました！")
 
 # ==========================================
-# 2. 経営ダッシュボードタブ（選択制）
+# 2. 経営ダッシュボード（仮案1）タブ
 # ==========================================
 with tab_dashboard:
-  st.subheader("📊 経営ダッシュボード")
+  st.subheader("📊 経営ダッシュボード【仮案1】")
+  st.info(
+      "💡 見たいモジュールを選択し、定休日（売上0円）を除外した営業日ベースのきれいな推移で確認できます。"
+  )
 
-  st.markdown("### 🎛️ 表示モジュール選択（見たい項目にチェック）")
   selected_modules = st.multiselect(
-      "表示項目",
+      "表示モジュール選択",
       [
           "1. 月間KPIサマリー（目標達成率・客数・客単価）",
           "2. 営業日数24日ベースの曜日別目標・実績比較",
-          "3. 日別売上推移グラフ ＆ 詳細テーブル",
+          "3. 営業日ベースの日別売上推移グラフ ＆ 詳細テーブル",
           "4. 人件費・仕入コストバランス",
       ],
       default=[
           "1. 月間KPIサマリー（目標達成率・客数・客単価）",
           "2. 営業日数24日ベースの曜日別目標・実績比較",
-          "3. 日別売上推移グラフ ＆ 詳細テーブル",
+          "3. 営業日ベースの日別売上推移グラフ ＆ 詳細テーブル",
       ],
   )
 
   st.markdown("---")
 
-  # 月の選択フィルター
+  # 月の選択
   df_data["年月"] = df_data["日時"].dt.strftime("%Y年%m月")
   available_months = sorted(df_data["年月"].unique(), reverse=True)
   selected_month = st.selectbox(
       "対象月を選択", available_months, key="dash_month"
   )
 
-  # フィルタリング
   df_filtered = df_data[df_data["年月"] == selected_month].copy()
-  active_df = df_filtered[df_filtered["Uレジ売上"] > 0]
+  active_df = df_filtered[df_filtered["Uレジ売上"] > 0].copy()
 
   total_sales = active_df["Uレジ売上"].sum()
   target_sales = 3000000
@@ -311,13 +338,9 @@ with tab_dashboard:
   # 2. 曜日別目標・実績比較
   if "2. 営業日数24日ベースの曜日別目標・実績比較" in selected_modules:
     st.markdown("### 📅 営業日数24日ベース 曜日別目標対比")
-    st.info(
-        "💡 月商300万（24営業日・平均日販12.5万円）をベースに、週末や平日の波に合わせた曜日別目標モデルです。"
-    )
 
-    active_df_copy = active_df.copy()
-    active_df_copy["曜日JP"] = (
-        active_df_copy["日時"]
+    active_df["曜日JP"] = (
+        active_df["日時"]
         .dt.day_name()
         .map({
             "Monday": "月",
@@ -331,7 +354,7 @@ with tab_dashboard:
     )
 
     dow_summary = (
-        active_df_copy.groupby("曜日JP")
+        active_df.groupby("曜日JP")
         .agg(営業回数=("Uレジ売上", "count"), 平均売上=("Uレジ売上", "mean"))
         .reindex(["月", "火", "水", "木", "金", "土", "日"])
         .fillna(0)
@@ -349,7 +372,6 @@ with tab_dashboard:
     dow_summary["目標日販"] = pd.Series(target_dow_dict)
     dow_summary["平均実績"] = dow_summary["平均売上"].astype(int)
 
-    # 表示用テーブル作成（フォーマット済み文字列）
     display_dow = pd.DataFrame({
         "営業回数": dow_summary["営業回数"].astype(int).astype(str) + "回",
         "目標日販": dow_summary["目標日販"].apply(lambda x: f"¥{x:,.0f}"),
@@ -359,11 +381,16 @@ with tab_dashboard:
     st.dataframe(display_dow, use_container_width=True)
     st.markdown("---")
 
-  # 3. 日別売上推移グラフ ＆ 詳細テーブル
-  if "3. 日別売上推移グラフ ＆ 詳細テーブル" in selected_modules:
-    st.markdown(f"### 📈 {selected_month} 日別売上推移")
-    if not df_filtered.empty:
-      chart_df = df_filtered.set_index("日時")[["Uレジ売上"]]
+  # 3. 営業日ベースの日別売上推移グラフ ＆ 詳細テーブル
+  if "3. 営業日ベースの日別売上推移グラフ ＆ 詳細テーブル" in selected_modules:
+    st.markdown(
+        f"### 📈 {selected_month} 日別売上推移（営業日ベース・休業日除外）"
+    )
+    if not active_df.empty:
+      # 営業日（Uレジ売上 > 0）のみのデータフレームでグラフを作成
+      chart_df = active_df.set_index(
+          active_df["日時"].dt.strftime("%m/%d")
+      )[["Uレジ売上"]]
       st.line_chart(chart_df)
 
     with st.expander("📋 日別詳細データ一覧を表示する"):
@@ -416,10 +443,6 @@ with tab_dashboard:
 # ==========================================
 with tab_admin:
   st.subheader("⚙️ 管理者設定・データ管理")
-  st.markdown(
-      "データのバックアップダウンロードや、全期間のデータ確認が行えます。"
-  )
-
   if os.path.exists(DATA_FILE):
     with open(DATA_FILE, "rb") as f:
       st.download_button(
